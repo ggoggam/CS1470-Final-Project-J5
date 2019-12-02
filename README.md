@@ -5,5 +5,3 @@ We implement Piano Genie model using Tensorflow 2.x Keras methods. For more info
 * Piano Genie [Github](https://github.com/tensorflow/magenta/tree/master/magenta/models/piano_genie)
 
 The original model was implemented with Tensorflow 1.x with rooms for custom configurations, including different quantization techniques such as Variational Autoencoder and Integer Quantization with Straight Through. For this model, we plan to implement only the IQST. The project will focus mainly on creating a modular architecture using Keras for Piano Genie.
-* [Proposal](/docs/proposal.pdf)
-* [Reflection](/docs/reflection.pdf)
