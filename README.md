@@ -1,4 +1,4 @@
-# CS1470-Final-Project-J5
+# CS1470 Final Project - Piano Genie
 We implement Piano Genie model using Tensorflow 2.x Keras methods. For more information and Github fork, follow these links:
 * Piano Genie [Paper](https://arxiv.org/pdf/1810.05246.pdf)
 * Piano Genie Tensorflow Magenta [Blog Post](https://magenta.tensorflow.org/pianogenie)
