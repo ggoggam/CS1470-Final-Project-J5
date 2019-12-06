@@ -3,6 +3,11 @@ import tensorflow as tf
 import util
 from tensorflow.keras.layers import Bidirectional, StackedRNNCells, LSTMCell, Dense, RNN
 
+import loader
+
+import pretty_midi
+
+from magenta.music.midi_io import midi_to_note_sequence
 class Encoder(tf.keras.layers.Layer):
 
     """
@@ -36,7 +41,7 @@ class Encoder(tf.keras.layers.Layer):
 
         return outputs, final_state
 
-class Decoder(tf.keras.layers):
+class Decoder(tf.keras.layers.Layer):
 
     """
     Decoder Architecture
@@ -163,7 +168,7 @@ class PianoGenie(tf.keras.Model):
         enc_input = []
 
         enc_input.append(tf.one_hot(pitches, 88))
-        enc_input.append(input_dict['delta_times_int'], 33)
+        enc_input.append(tf.one_hot(input_dict['delta_times_int'], 33))
         # enc_input.append(velocities, 17)
 
         enc_input = tf.concat(enc_input, axis=2)
@@ -264,10 +269,23 @@ class PianoGenie(tf.keras.Model):
     def train(self, input_dict):
         
         # NEEDS BATCHING !!! (Done in data loader)
+        print("bp 3")
+
         with tf.GradientTape() as tape:
             output_dict = self.call(input_dict)
             loss, _ = self.loss(output_dict)
+            print(loss)
 
         grad = tape.gradient(loss, self.trainable_variables)
-        self.optimizer.apply_gradients(zip(grad, self.trainable_variables))      
+        self.optimizer.apply_gradients(zip(grad, self.trainable_variables))  
+
+pg = PianoGenie()
+print("bp 1")
+# midi_data = pretty_midi.PrettyMIDI('./data/AbdelmoulaJS02.mid')
+# note_sequence = midi_to_note_sequence(midi_data)
+
+note_tensors = loader.load_noteseqs("./data/2016beethoven.tfrecord")
+print("bp 2")
+# print(note_tensors["pb_strs"])
+pg.train(note_tensors)
 

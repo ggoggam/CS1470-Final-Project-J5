@@ -25,8 +25,14 @@ from magenta.music.protobuf import music_pb2
 import numpy as np
 import tensorflow as tf
 
+import pretty_midi
 
-def load_noteseqs(fp = "./data/train*.tfrecord",
+from magenta.music.midi_io import midi_to_note_sequence
+
+import pickle
+
+
+def load_noteseqs(fp,
                 batch_size = 32,
                 seq_len = 128,
                 max_discrete_times = 32,
@@ -63,6 +69,8 @@ def load_noteseqs(fp = "./data/train*.tfrecord",
         
         # Note Sequence 2 Proto
         note_sequence = music_pb2.NoteSequence.FromString(note_sequence_str)
+
+
         note_sequence_ordered = sorted(list(note_sequence.notes), key=lambda n: (n.start_time, n.pitch))
 
         # Transposition Data Segmentation
@@ -80,8 +88,9 @@ def load_noteseqs(fp = "./data/train*.tfrecord",
 
         # Delta time start high to indicate free decision
         delta_times = np.concatenate([[100000.], start_times[1:] - start_times[:-1]])
+
         
-        return note_sequence_str, np.stack([pitches, delta_times], axis=1).astype(np.float32)
+        return np.stack([pitches, delta_times], axis=1).astype(np.float32)
 
     # Filter out excessively short examples
     def _filter_short(note_sequence_tensor, seq_len):
@@ -103,41 +112,52 @@ def load_noteseqs(fp = "./data/train*.tfrecord",
     # Find sharded filenames
     filenames = tf.io.gfile.glob(fp)
 
-    # Create dataset
-    dataset = tf.data.TFRecordDataset(filenames)
+    # # Create dataset
 
-    # Deserialize protos
+
+
+
+    dataset = tf.compat.v1.data.TFRecordDataset(filenames)
+    # dataset = tf.data.Dataset.from_tensors(note_sequence)
+    # tf.print(dataset)
+
+    # # Deserialize protos
+
     dataset = dataset.map(
-        lambda data: tf.py_function(
+        lambda data: tf.compat.v1.py_func(
             lambda x: _str_to_tensor(
                 x, augment_stretch_bounds, augment_transpose_bounds),
-            [data], (tf.string, tf.float32), stateful=False))
+            [data], (tf.float32), stateful=False))
 
 
-    # Filter sequences that are too short
-    dataset = dataset.filter(lambda s, n: _filter_short(n, seq_len))
+    # # Filter sequences that are too short
+    dataset = dataset.filter(lambda n: _filter_short(n, seq_len))
 
-    # Get random crops
-    dataset = dataset.map(lambda s, n: (s, _random_crop(n, seq_len)))
+    # # Get random crops
+    dataset = dataset.map(lambda n:  _random_crop(n, seq_len))
 
-    # Shuffle
-    # if repeat:
-    dataset = dataset.shuffle(buffer_size=buffer_size)
+    # # Shuffle
+    # # if repeat:
+    # dataset = dataset.shuffle(buffer_size=buffer_size)
 
-    # Make batches
-    dataset = dataset.batch(batch_size, drop_remainder=True)
+    # # Make batches
+    dataset = dataset.batch(batch_size, drop_remainder=False)
 
     # Repeat
-    #if repeat:
-    dataset = dataset.repeat()
+    # if repeat:
+    # dataset = dataset.repeat()
 
+    print("adsf")
     # Get tensors
-    iterator = dataset.__iter__()
-    note_sequence_strs, note_sequence_tensors = next(iterator)
+    iterator = tf.compat.v1.data.make_one_shot_iterator(dataset)
+    note_sequence_tensors = iterator.get_next()
+
+    print("adsfasdfasdf")
+
 
     # Set shapes
-    note_sequence_strs.set_shape([batch_size])
-    note_sequence_tensors.set_shape([batch_size, seq_len, 2])
+    # note_sequence_strs.set_shape([batch_size])
+    note_sequence_tensors.set_shape([1, seq_len, 2])
 
     # Retrieve tensors
     note_pitches = tf.cast(note_sequence_tensors[:, :, 0] + 1e-4, tf.int32)
@@ -150,11 +170,29 @@ def load_noteseqs(fp = "./data/train*.tfrecord",
     note_delta_times_int = tf.minimum(note_delta_times_int, max_discrete_times)
 
     # Build return dict
+    # tf.print(note_sequence_strs)
     note_tensors = {
-        "pb_strs": note_sequence_strs,
+        # "pb_strs": note_sequence_strs,
         "midi_pitches": note_pitches,
         "delta_times_int": note_delta_times_int,
     }
 
     return note_tensors
+
+
+# sess = tf.Session()
+# with sess.as_default():
+
+#     note_tensors = load_noteseqs("./data/2016beethoven.tfrecord")
+
+
+# file = open('pickled_note_tensors', 'wb')
+
+# pickle.dump(note_tensors, file)
+
+# file.close()
+# saver = tf.train.Saver(note_tensors)
+# save_path = saver.save(sess, "./data/note_tensors.ckpt")
+
+
 
