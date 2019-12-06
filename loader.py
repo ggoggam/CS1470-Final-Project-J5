@@ -153,7 +153,6 @@ def load_noteseqs(fp = "./data/train*.tfrecord",
     note_tensors = {
         "pb_strs": note_sequence_strs,
         "midi_pitches": note_pitches,
-        "delta_times": note_delta_times,
         "delta_times_int": note_delta_times_int,
     }
 
