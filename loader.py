@@ -137,7 +137,7 @@ def load_noteseqs(fp = "./data/train*.tfrecord",
 
     # Set shapes
     note_sequence_strs.set_shape([batch_size])
-    note_sequence_tensors.set_shape([batch_size, seq_len, 5])
+    note_sequence_tensors.set_shape([batch_size, seq_len, 2])
 
     # Retrieve tensors
     note_pitches = tf.cast(note_sequence_tensors[:, :, 0] + 1e-4, tf.int32)
