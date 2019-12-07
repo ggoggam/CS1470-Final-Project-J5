@@ -29,7 +29,7 @@ class Encoder(tf.keras.layers.Layer):
         cells = StackedRNNCells([LSTMCell(self.rnn_units)] * self.num_layers)
 
         self.lift = Dense(self.rnn_units)
-        self.lstm = Bidirectional(RNN(cells, return_state=True))
+        self.lstm = Bidirectional(RNN(cells, return_sequences=True, return_state=True))
 
     @tf.function
     def call(self, inputs):
