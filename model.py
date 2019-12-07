@@ -161,16 +161,13 @@ class PianoGenie(tf.keras.Model):
 
         # Parse Inputs
         pitches = input_dict['midi_pitches']
-        # velocities = input_dict['velocities']
-        # pitches_scalar = tf.cast(pitches, tf.float32) / 87.0 * 2.0 - 1.0
 
         # Create Encoder Features (Pitch, Delta, Velocity)
         enc_input = []
 
         enc_input.append(tf.one_hot(pitches, 88))
         enc_input.append(tf.one_hot(input_dict['delta_times_int'], 33))
-        # enc_input.append(velocities, 17)
-
+        
         enc_input = tf.concat(enc_input, axis=2)
         
         # Run through LSTM Encoder
@@ -214,15 +211,15 @@ class PianoGenie(tf.keras.Model):
         mask = stp_emb_inrange_mask if self.stp_varlen_mask is None else self.stp_varlen_mask * stp_emb_inrange_mask
         stp_emb_disc_oh = tf.one_hot(stp_emb_disc, self.num_buttons)
         stp_emb_avg_probs = self.weighted_avg(stp_emb_disc_oh, mask, axis=[0,1], expand_mask=True)
-        stp_emb_disc_ppl = tf.exp(-tf.reduce_sum(stp_emb_avg_probs * tf.math.log(stp_emb_avg_probs + 1e-10)))
+        # stp_emb_disc_ppl = tf.exp(-tf.reduce_sum(stp_emb_avg_probs * tf.math.log(stp_emb_avg_probs + 1e-10)))
 
         output_dict['stp_emb_quantized'] = stp_emb_qnt
         output_dict['stp_emb_discrete'] = stp_emb_disc
         output_dict['stp_emb_valid_p'] = stp_emb_valid_p
         output_dict['stp_emb_range_penalty'] = stp_emb_range_penalty
         output_dict['stp_emb_contour_penalty'] = stp_emb_contour_penalty
-        output_dict['stp_emb_deviate_penalty'] = stp_emb_deviate_penalty
-        output_dict['stp_emb_discrete_ppl'] = stp_emb_disc_ppl
+        # output_dict['stp_emb_deviate_penalty'] = stp_emb_deviate_penalty
+        # output_dict['stp_emb_discrete_ppl'] = stp_emb_disc_ppl
         output_dict['stp_emb_quantized_lookup'] = tf.expand_dims(2.0 * (stp_emb_disc_f / (self.num_buttons - 1.0)) - 1.0, axis=2)
 
         latent.append(stp_emb_qnt)
@@ -246,13 +243,6 @@ class PianoGenie(tf.keras.Model):
         output_dict['dec_reconstruction_predictions'] = tf.argmax(dec_recon_logits, axis=-1, output_type=tf.int32)
         output_dict['dec_reconstruction_midi_predictions'] = util.piano2midi(output_dict['dec_reconstruction_predictions'])
         output_dict['dec_reconstruction_loss'] = dec_recon_loss
-
-        # Velocity Predictions
-        # dec_recon_velocity_logits = self.vel_dense(dec_stp)
-        # dec_recon_velocity_loss = self.weighted_avg(tf.nn.sparse_softmax_cross_entropy_with_logits(dec_recon_velocity_logits, velocities), self.stp_varlen_mask)
-
-        # output_dict['dec_reconstruction_velocity_logits'] = dec_recon_velocity_logits
-        # output_dict['dec_reconstruction_velocity_loss'] = dec_recon_velocity_loss
 
         return output_dict
 
