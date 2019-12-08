@@ -31,7 +31,7 @@ Some of the magenta functionalities are not compatible with the code. Comment so
 cd <path-to-virtual-envrionment>\Lib\site-packages\magenta
 
 ### From __init__.py
-Comment the following:
+Comment out the following:
 
     import magenta.common.beam_search
     import magenta.common.concurrency
