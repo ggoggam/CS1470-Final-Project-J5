@@ -3,9 +3,11 @@ import tensorflow as tf
 import util
 from tensorflow.keras.layers import Bidirectional, StackedRNNCells, LSTMCell, Dense, RNN
 
-import loader
+import loader_midi_direct
 
 import pretty_midi
+
+import pickle
 
 from magenta.music.midi_io import midi_to_note_sequence
 class Encoder(tf.keras.layers.Layer):
@@ -168,6 +170,7 @@ class PianoGenie(tf.keras.Model):
         enc_input = []
 
         enc_input.append(tf.one_hot(pitches, 88))
+
         enc_input.append(tf.one_hot(input_dict['delta_times_int'], 33))
         # enc_input.append(velocities, 17)
 
@@ -178,7 +181,7 @@ class PianoGenie(tf.keras.Model):
         enc_stp, enc_seq = self.encoder(enc_input)
 
         # Reduce Dimension
-        pre_enc_stp = self.enc_pre_dense(enc_stp)
+        pre_enc_stp = tf.squeeze(self.enc_pre_dense(enc_stp))
 
         # Run through IQST
         stp_emb_disc_f, stp_emb_disc_rescaled = self.iqst(pre_enc_stp, self.num_buttons)
@@ -211,18 +214,18 @@ class PianoGenie(tf.keras.Model):
         stp_emb_deviate_penalty = self.weighted_avg(tf.square(stp_emb_latents), mask)
 
         # Perplexity for Encoder
-        mask = stp_emb_inrange_mask if self.stp_varlen_mask is None else self.stp_varlen_mask * stp_emb_inrange_mask
-        stp_emb_disc_oh = tf.one_hot(stp_emb_disc, self.num_buttons)
-        stp_emb_avg_probs = self.weighted_avg(stp_emb_disc_oh, mask, axis=[0,1], expand_mask=True)
-        stp_emb_disc_ppl = tf.exp(-tf.reduce_sum(stp_emb_avg_probs * tf.math.log(stp_emb_avg_probs + 1e-10)))
+        # mask = stp_emb_inrange_mask if self.stp_varlen_mask is None else self.stp_varlen_mask * stp_emb_inrange_mask
+        # stp_emb_disc_oh = tf.one_hot(stp_emb_disc, self.num_buttons)
+        # stp_emb_avg_probs = self.weighted_avg(stp_emb_disc_oh, mask, axis=[0,1], expand_mask=True)
+        # stp_emb_disc_ppl = tf.exp(-tf.reduce_sum(stp_emb_avg_probs * tf.math.log(stp_emb_avg_probs + 1e-10)))
 
         output_dict['stp_emb_quantized'] = stp_emb_qnt
         output_dict['stp_emb_discrete'] = stp_emb_disc
         output_dict['stp_emb_valid_p'] = stp_emb_valid_p
         output_dict['stp_emb_range_penalty'] = stp_emb_range_penalty
         output_dict['stp_emb_contour_penalty'] = stp_emb_contour_penalty
-        output_dict['stp_emb_deviate_penalty'] = stp_emb_deviate_penalty
-        output_dict['stp_emb_discrete_ppl'] = stp_emb_disc_ppl
+        # output_dict['stp_emb_deviate_penalty'] = stp_emb_deviate_penalty
+        # output_dict['stp_emb_discrete_ppl'] = stp_emb_disc_ppl
         output_dict['stp_emb_quantized_lookup'] = tf.expand_dims(2.0 * (stp_emb_disc_f / (self.num_buttons - 1.0)) - 1.0, axis=2)
 
         latent.append(stp_emb_qnt)
@@ -284,7 +287,9 @@ print("bp 1")
 # midi_data = pretty_midi.PrettyMIDI('./data/AbdelmoulaJS02.mid')
 # note_sequence = midi_to_note_sequence(midi_data)
 
-note_tensors = loader.load_noteseqs("./data/2016beethoven.tfrecord")
+# note_tensors = loader_midi_direct.load_noteseqs()
+note_tensors = pickle.load( open( "pickled_note_tensors32.p", "rb" ) )
+print(note_tensors)
 print("bp 2")
 # print(note_tensors["pb_strs"])
 pg.train(note_tensors)

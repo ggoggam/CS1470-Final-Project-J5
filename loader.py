@@ -161,6 +161,7 @@ def load_noteseqs(fp,
 
     # Retrieve tensors
     note_pitches = tf.cast(note_sequence_tensors[:, :, 0] + 1e-4, tf.int32)
+    print(note_pitches)
     note_delta_times = note_sequence_tensors[:, :, 1]
 
     # Onsets and frames model samples at 31.25Hz
@@ -168,6 +169,7 @@ def load_noteseqs(fp,
 
     # Reduce time discretizations to a fixed number of buckets
     note_delta_times_int = tf.minimum(note_delta_times_int, max_discrete_times)
+    print(note_delta_times_int)
 
     # Build return dict
     # tf.print(note_sequence_strs)
