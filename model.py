@@ -1,15 +1,15 @@
 import tensorflow as tf
-
-import util
 from tensorflow.keras.layers import Bidirectional, StackedRNNCells, LSTMCell, Dense, RNN
 
+import util
 import loader_midi_direct
 
 import pretty_midi
-
 import pickle
 
 from magenta.music.midi_io import midi_to_note_sequence
+
+
 class Encoder(tf.keras.layers.Layer):
 
     """
@@ -37,9 +37,9 @@ class Encoder(tf.keras.layers.Layer):
     def call(self, inputs):
 
         outputs = self.lift(inputs)
-        outputs, _, h2, _, _ = self.lstm(outputs) 
+        outputs, h_fw, h_bw, _, _ = self.lstm(outputs) 
 
-        final_state = tf.concat([h2[0], h2[1]], axis=1)
+        final_state = tf.concat([h_fw[1], h_bw[1]], axis=1)
 
         return outputs, final_state
 
@@ -62,17 +62,20 @@ class Decoder(tf.keras.layers.Layer):
         self.rnn_units = 128
 
         cells = StackedRNNCells([LSTMCell(self.rnn_units)] * self.num_layers)
-
+        self.state_size = cells.state_size
+        
         self.lift = Dense(self.rnn_units)
         self.lstm = RNN(cells, return_state=True)
 
     @tf.function
     def call(self, inputs):
-        
-        init_state = tf.zeros(inputs.shape)
-        outputs, _, h2, _, _ = self.lstm(inputs, initial_state=init_state)
 
-        final_state = h2
+        inputs = self.lift(inputs)
+        init_state = [[tf.zeros([32,128]), tf.zeros([32, 128])] for _ in range(self.num_layers)]
+
+        outputs, h, _ = self.lstm(inputs, initial_state=init_state)
+
+        final_state = h[1]
 
         return outputs, init_state, final_state
 
@@ -122,9 +125,8 @@ class PianoGenie(tf.keras.Model):
         self.decoder = Decoder()
 
         self.enc_pre_dense = Dense(1)
-        self.embedding = Dense(64)
+        # self.embedding = Dense(64)
         self.dec_dense = Dense(88)
-        self.vel_dense = Dense(17)
 
         # Optimizer
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=3e-4)
@@ -162,15 +164,13 @@ class PianoGenie(tf.keras.Model):
         output_dict = {}
 
         # Parse Inputs
-        pitches = input_dict['midi_pitches']
+        pitches = util.midi2piano(input_dict['midi_pitches'])
 
         # Create Encoder Features (Pitch, Delta, Velocity)
         enc_input = []
 
         enc_input.append(tf.one_hot(pitches, 88))
-
         enc_input.append(tf.one_hot(input_dict['delta_times_int'], 33))
-        
         enc_input = tf.concat(enc_input, axis=2)
         
         # Run through LSTM Encoder
@@ -206,9 +206,9 @@ class PianoGenie(tf.keras.Model):
                                                     None if self.stp_varlen_mask is None else self.stp_varlen_mask[:,1:])
 
         # Regularization for note consistency 
-        stp_emb_note_held = tf.cast(tf.equal(pitches[:,1:] - pitches[:,:-1], 0), tf.float32)
-        mask = stp_emb_note_held if self.stp_varlen_mask is None else self.stp_varlen_mask[:,1:] * stp_emb_note_held
-        stp_emb_deviate_penalty = self.weighted_avg(tf.square(stp_emb_latents), mask)
+        # stp_emb_note_held = tf.cast(tf.equal(pitches[:,1:] - pitches[:,:-1], 0), tf.float32)
+        # mask = stp_emb_note_held if self.stp_varlen_mask is None else self.stp_varlen_mask[:,1:] * stp_emb_note_held
+        # stp_emb_deviate_penalty = self.weighted_avg(tf.square(stp_emb_latents), mask)
 
         # Perplexity for Encoder
         # mask = stp_emb_inrange_mask if self.stp_varlen_mask is None else self.stp_varlen_mask * stp_emb_inrange_mask
@@ -228,49 +228,50 @@ class PianoGenie(tf.keras.Model):
         latent.append(stp_emb_qnt)
 
         # Embedding
-        seq_emb = self.embedding(enc_seq)
-        output_dict['seq_emb'] = seq_emb
+        # seq_emb = self.embedding(enc_seq)
+        # output_dict['seq_emb'] = seq_emb
 
         # Create Decoder Features
         dec_input = tf.concat(latent, axis=2)
 
         # Decode
-        dec_stp, dec_init_state, dec_final_state = self.decoder(dec_input)
-        dec_recon_logits = self.dec_dense(dec_stp)
-        dec_recon_loss = self.weighted_avg(tf.nn.sparse_softmax_cross_entropy_with_logits(dec_recon_logits, pitches), self.stp_varlen_mask)
+        dec_stp, _, dec_final_state = self.decoder(dec_input)
+        dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
+        dec_recon_loss = self.weighted_avg(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=pitches, logits=dec_recon_logits), self.stp_varlen_mask)
 
-        output_dict['dec_init_state'] = dec_init_state
+
+        # output_dict['dec_init_state'] = dec_init_state
         output_dict['dec_final_state'] = dec_final_state
-        output_dict['dec_reconstruction_logits'] = dec_recon_logits
-        output_dict['dec_reconstruction_scores'] = tf.nn.softmax(dec_recon_logits, axis=-1)
-        output_dict['dec_reconstruction_predictions'] = tf.argmax(dec_recon_logits, axis=-1, output_type=tf.int32)
-        output_dict['dec_reconstruction_midi_predictions'] = util.piano2midi(output_dict['dec_reconstruction_predictions'])
-        output_dict['dec_reconstruction_loss'] = dec_recon_loss
+        output_dict['dec_recons_logits'] = dec_recon_logits
+        output_dict['dec_recons_scores'] = tf.nn.softmax(dec_recon_logits, axis=-1)
+        output_dict['dec_recons_predictions'] = tf.argmax(dec_recon_logits, axis=-1, output_type=tf.int32)
+        output_dict['dec_recons_midi_predictions'] = util.piano2midi(output_dict['dec_recons_predictions'])
+        output_dict['dec_recons_loss'] = dec_recon_loss
 
         return output_dict
 
     def loss(self, output_dict):
 
         loss = output_dict['dec_recons_loss']
-        perp = tf.exp(output_dict['dec_recons_loss'])
-
         loss = loss + output_dict['stp_emb_range_penalty']
         loss = loss + output_dict['stp_emb_contour_penalty']
 
+        perp = tf.exp(output_dict['dec_recons_loss'])
+        
         return loss, perp
 
     def train(self, input_dict):
         
         # NEEDS BATCHING !!! (Done in data loader)
         print("bp 3")
+        while True:
+            with tf.GradientTape() as tape:
+                output_dict = self.call(input_dict)
+                loss, _ = self.loss(output_dict)
+                print(loss)
 
-        with tf.GradientTape() as tape:
-            output_dict = self.call(input_dict)
-            loss, _ = self.loss(output_dict)
-            print(loss)
-
-        grad = tape.gradient(loss, self.trainable_variables)
-        self.optimizer.apply_gradients(zip(grad, self.trainable_variables))  
+            grad = tape.gradient(loss, self.trainable_variables)
+            self.optimizer.apply_gradients(zip(grad, self.trainable_variables))  
 
 pg = PianoGenie()
 print("bp 1")
@@ -279,8 +280,8 @@ print("bp 1")
 
 # note_tensors = loader_midi_direct.load_noteseqs()
 note_tensors = pickle.load( open( "pickled_note_tensors32.p", "rb" ) )
-print(note_tensors)
-print("bp 2")
+# print(note_tensors)
+# print("bp 2")
 # print(note_tensors["pb_strs"])
 pg.train(note_tensors)
 
