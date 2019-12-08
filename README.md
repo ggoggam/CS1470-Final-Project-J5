@@ -18,7 +18,7 @@ $ python3 -m venv <path-to-virtual-envrionment>
 $ source <path-to-virtual-environment>/bin/activate
 ```
 
-Once magenta is installed, then upgrade tensorflow.
+Once magenta is installed, upgrade tensorflow.
 ```
 # Windows / Linux
 (your-venv) pip install magenta
