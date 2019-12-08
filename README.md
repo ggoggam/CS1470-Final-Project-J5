@@ -32,12 +32,12 @@ cd <path-to-virtual-envrionment>\Lib\site-packages\magenta
 
 # From __init__.py comment out the following:
 
-    import magenta.common.beam_search
-    import magenta.common.concurrency
-    import magenta.common.nade
-    import magenta.common.sequence_example_lib
-    import magenta.common.state_util
-    import magenta.common.testing_lib
-    import magenta.common.tf_utils
+import magenta.common.beam_search
+import magenta.common.concurrency
+import magenta.common.nade
+import magenta.common.sequence_example_lib
+import magenta.common.state_util
+import magenta.common.testing_lib
+import magenta.common.tf_utils
 
 ```
