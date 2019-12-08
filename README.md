@@ -30,8 +30,7 @@ Some of the magenta functionalities are not compatible with the code. Comment so
 # Windows / Linux
 cd <path-to-virtual-envrionment>\Lib\site-packages\magenta
 
-### From __init__.py
-Comment out the following:
+# From __init__.py comment out the following:
 
     import magenta.common.beam_search
     import magenta.common.concurrency
