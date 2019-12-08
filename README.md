@@ -7,7 +7,7 @@ We implement Piano Genie model using Tensorflow 2.x Keras methods. For more info
 The original model was implemented with Tensorflow 1.x alongside custom configurations, including different quantization techniques such as Variational Autoencoder and Integer Quantization with Straight Through. For this model, we implement the IQST method only. The project will mainly focus on creating a modular architecture using Keras for Piano Genie.
 
 # How to setup your environment
-We use utilities from magenta to process the dataset. Magenta has some compatilbility issues with magenta, so we recommend setting up the development environment in the following way from your chosen directory:
+We use utilities from magenta to process the dataset. Magenta has some compatilbility issues with the most recent versions of TensorFlow, so we recommend setting up the development environment in the following way from your chosen directory:
 ```
 # Windows
 py -m venv <path-to-virtual-environment>
