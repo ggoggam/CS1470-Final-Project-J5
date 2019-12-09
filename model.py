@@ -74,7 +74,6 @@ class Decoder(tf.keras.layers.Layer):
         init_state = [[tf.zeros([32,128]), tf.zeros([32, 128])] for _ in range(self.num_layers)]
 
         outputs, h, _ = self.lstm(inputs, initial_state=init_state)
-
         final_state = h[1]
 
         return outputs, init_state, final_state
@@ -205,31 +204,14 @@ class PianoGenie(tf.keras.Model):
                                                     -tf.multiply(stp_emb_notes, stp_emb_latents), 0)),
                                                     None if self.stp_varlen_mask is None else self.stp_varlen_mask[:,1:])
 
-        # Regularization for note consistency 
-        # stp_emb_note_held = tf.cast(tf.equal(pitches[:,1:] - pitches[:,:-1], 0), tf.float32)
-        # mask = stp_emb_note_held if self.stp_varlen_mask is None else self.stp_varlen_mask[:,1:] * stp_emb_note_held
-        # stp_emb_deviate_penalty = self.weighted_avg(tf.square(stp_emb_latents), mask)
-
-        # Perplexity for Encoder
-        # mask = stp_emb_inrange_mask if self.stp_varlen_mask is None else self.stp_varlen_mask * stp_emb_inrange_mask
-        # stp_emb_disc_oh = tf.one_hot(stp_emb_disc, self.num_buttons)
-        # stp_emb_avg_probs = self.weighted_avg(stp_emb_disc_oh, mask, axis=[0,1], expand_mask=True)
-        # stp_emb_disc_ppl = tf.exp(-tf.reduce_sum(stp_emb_avg_probs * tf.math.log(stp_emb_avg_probs + 1e-10)))
-
         output_dict['stp_emb_quantized'] = stp_emb_qnt
         output_dict['stp_emb_discrete'] = stp_emb_disc
         output_dict['stp_emb_valid_p'] = stp_emb_valid_p
         output_dict['stp_emb_range_penalty'] = stp_emb_range_penalty
         output_dict['stp_emb_contour_penalty'] = stp_emb_contour_penalty
-        # output_dict['stp_emb_deviate_penalty'] = stp_emb_deviate_penalty
-        # output_dict['stp_emb_discrete_ppl'] = stp_emb_disc_ppl
         output_dict['stp_emb_quantized_lookup'] = tf.expand_dims(2.0 * (stp_emb_disc_f / (self.num_buttons - 1.0)) - 1.0, axis=2)
 
         latent.append(stp_emb_qnt)
-
-        # Embedding
-        # seq_emb = self.embedding(enc_seq)
-        # output_dict['seq_emb'] = seq_emb
 
         # Create Decoder Features
         dec_input = tf.concat(latent, axis=2)
@@ -239,8 +221,6 @@ class PianoGenie(tf.keras.Model):
         dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
         dec_recon_loss = self.weighted_avg(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=pitches, logits=dec_recon_logits), self.stp_varlen_mask)
 
-
-        # output_dict['dec_init_state'] = dec_init_state
         output_dict['dec_final_state'] = dec_final_state
         output_dict['dec_recons_logits'] = dec_recon_logits
         output_dict['dec_recons_scores'] = tf.nn.softmax(dec_recon_logits, axis=-1)
@@ -261,27 +241,19 @@ class PianoGenie(tf.keras.Model):
         return loss, perp
 
     def train(self, input_dict):
-        
-        # NEEDS BATCHING !!! (Done in data loader)
-        print("bp 3")
-        while True:
+        n, total = self.batch_size, input_dict['midi_pitches'].shape[0]
+
+        for i in range(total//n):
+            start, end = i * n, (i+1) * n
+            inputs = {'midi_pitches': input_dict['midi_pitches'][start:end],
+                      'delta_times_int': input_dict['delta_times_int'][start:end]}
+
             with tf.GradientTape() as tape:
-                output_dict = self.call(input_dict)
-                loss, _ = self.loss(output_dict)
-                print(loss)
+                outputs = self.call(inputs)
+                loss, _ = self.loss(outputs)
 
             grad = tape.gradient(loss, self.trainable_variables)
-            self.optimizer.apply_gradients(zip(grad, self.trainable_variables))  
+            self.optimizer.apply_gradients(zip(grad, self.trainable_variables))
 
-pg = PianoGenie()
-print("bp 1")
-# midi_data = pretty_midi.PrettyMIDI('./data/AbdelmoulaJS02.mid')
-# note_sequence = midi_to_note_sequence(midi_data)
-
-# note_tensors = loader_midi_direct.load_noteseqs()
-note_tensors = pickle.load( open( "pickled_note_tensors32.p", "rb" ) )
-# print(note_tensors)
-# print("bp 2")
-# print(note_tensors["pb_strs"])
-pg.train(note_tensors)
+        return loss
 
