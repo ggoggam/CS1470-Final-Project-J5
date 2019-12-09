@@ -3,6 +3,16 @@ from model import *
 
 import pickle
 
+def shuffle(input_dict):
+
+    num_samples = input_dict['midi_pitches'].shape[0]
+
+    shuffled_ind = tf.random.shuffle(range(num_samples))
+
+    input_dict['midi_pitches'] = tf.gather(input_dict['midi_pitches'], shuffled_ind)
+    input_dict['delta_times_int'] = tf.gather(input_dict['delta_times_int'], shuffled_ind)
+
+    return input_dict
 
 def main():
 
@@ -12,15 +22,24 @@ def main():
     # Used for Testing Model (Debugging) with Single Batch Data
     IS_DEBUGGING = False
 
+    # Used for Restoring Checkpoint to Continue Training or Testing
+    RESTORE_CHECKPOINT = True
+
     # Used for Choosing Training / Testing Mode
     MODE = 'TRAIN'
+
+    # Create Piano Genie Model
+    model = PianoGenie()
+
+    # Create Checkpoints
+    checkpt = tf.train.Checkpoint(model=model)
+    checkpt_dir = './checkpoints'
+    manager = tf.train.CheckpointManager(checkpt, checkpt_dir, max_to_keep=1)
+    available_device = 'GPU:0' if tf.test.is_gpu_available() else 'CPU:0'
 
     # Training Data Pickling
     if PICKLE_TRAIN_DATA: 
         load_noteseqs()
-
-    # Create Piano Genie Model
-    model = PianoGenie()
 
     # Load Notesequences
     if IS_DEBUGGING: 
@@ -28,28 +47,29 @@ def main():
     else:
         note_tensors = pickle.load(open('pickled_tensors.p', 'rb'))
 
-    print(note_tensors['midi_pitches'].shape)
-    # Create Checkpoints
-    checkpt = tf.train.Checkpoint(model=model)
-    checkpt_dir = './checkpoints'
-
-    # Training (Batching done in model)
-    if MODE == 'TRAIN':
-        manager = tf.train.CheckpointManager(checkpt, checkpt_dir, max_to_keep=2)
-        cnt = 1
-
-        while True:
-            # Train for a single epoch
-            train_loss = model.train(note_tensors)
-            print('EPOCH %d Training Loss : %.5f' % (cnt, train_loss))
-            
-            # Save weights after a single epoch
-            manager.save()
-            cnt += 1
-    
-    if MODE == 'TEST':
+    # Restore Checkpoint
+    if RESTORE_CHECKPOINT:
         checkpt.restore(manager.latest_checkpoint)
-        # model.evaluate()
+
+    with tf.device('/device:' + available_device):
+        if MODE == 'TRAIN':
+            cnt = 1
+
+            while True:
+                # Shuffle
+                note_tensors = shuffle(note_tensors)
+
+                # Train for a single epoch
+                train_loss = model.train(note_tensors)
+                print('EPOCH %d Training Loss : %.5f' % (cnt, train_loss))
+                
+                # Save weights after a single epoch
+                manager.save()
+                cnt += 1
+        
+        if MODE == 'TEST':
+            checkpt.restore(manager.latest_checkpoint)
+            # model.evaluate()
 
 
 
