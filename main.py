@@ -2,6 +2,16 @@ from loader_midi_direct import load_noteseqs
 from model import *
 
 import pickle
+import argparse
+
+parser = argparse.ArgumentParser(description='piano genie model args')
+
+parser.add_argument('--mode', type=str, default='train', help='mode: either train or test')
+parser.add_argument('--restore', type=bool, default=True, help='restore last training checkpoint')
+parser.add_argument('--debug', type=bool, default=True, help='used for debugging on single batch')
+parser.add_argument('--create-data', type=bool, default=False, help='create pickled train data if true')
+
+args = parser.parse_args()
 
 def shuffle(input_dict):
 
@@ -16,18 +26,6 @@ def shuffle(input_dict):
 
 def main():
 
-    # Used for Pickling Train Data - Only to be used first time
-    PICKLE_TRAIN_DATA = False
-
-    # Used for Testing Model (Debugging) with Single Batch Data
-    IS_DEBUGGING = False
-
-    # Used for Restoring Checkpoint to Continue Training or Testing
-    RESTORE_CHECKPOINT = True
-
-    # Used for Choosing Training / Testing Mode
-    MODE = 'TRAIN'
-
     # Create Piano Genie Model
     model = PianoGenie()
 
@@ -38,21 +36,21 @@ def main():
     available_device = 'GPU:0' if tf.test.is_gpu_available() else 'CPU:0'
 
     # Training Data Pickling
-    if PICKLE_TRAIN_DATA: 
+    if args.create_data: 
         load_noteseqs()
 
     # Load Notesequences
-    if IS_DEBUGGING: 
+    if args.debug: 
         note_tensors = pickle.load(open('pickled_note_test_batch.p', 'rb'))
     else:
         note_tensors = pickle.load(open('pickled_tensors.p', 'rb'))
 
     # Restore Checkpoint
-    if RESTORE_CHECKPOINT:
+    if args.restore:
         checkpt.restore(manager.latest_checkpoint)
 
     with tf.device('/device:' + available_device):
-        if MODE == 'TRAIN':
+        if args.mode == 'train':
             cnt = 1
 
             while True:
@@ -67,7 +65,7 @@ def main():
                 manager.save()
                 cnt += 1
         
-        if MODE == 'TEST':
+        if args.mode == 'test':
             checkpt.restore(manager.latest_checkpoint)
             # model.evaluate()
 
