@@ -174,7 +174,7 @@ class PianoGenie(tf.keras.Model):
         
         # Run through LSTM Encoder
         latent = []
-        enc_stp, enc_seq = self.encoder(enc_input)
+        enc_stp, _ = self.encoder(enc_input)
 
         # Reduce Dimension
         pre_enc_stp = tf.squeeze(self.enc_pre_dense(enc_stp))
@@ -214,7 +214,19 @@ class PianoGenie(tf.keras.Model):
         latent.append(stp_emb_qnt)
 
         # Create Decoder Features
-        dec_input = tf.concat(latent, axis=2)
+        dec_input = latent
+
+        # Autoregression Features
+        curr_pitches = pitches
+        last_pitches = curr_pitches[:, :-1]
+        last_pitches = tf.pad(last_pitches, [[0, 0], [1, 0]], constant_values=-1)
+        dec_input.append(tf.one_hot(last_pitches+1, 89))
+
+        # Delta Times Features
+        dec_input.append(tf.one_hot(input_dict['delta_times_int'], 33))
+        
+        # Create Decoder Features
+        dec_input = tf.concat(dec_input, axis=2)
 
         # Decode
         dec_stp, _, dec_final_state = self.decoder(dec_input)
@@ -229,6 +241,27 @@ class PianoGenie(tf.keras.Model):
         output_dict['dec_recons_loss'] = dec_recon_loss
 
         return output_dict
+
+    def evaluate(self, dec_input):
+
+        """
+            Used for Actual Demo (Converting 8-button Input to Piano Keys)
+        """
+
+        dec_stp, _, _ = self.decoder(dec_input)
+        dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
+        
+        return dec_recon_logits
+
+    def test(self, dec_input):
+
+        """
+            Used for Paper / Presentation (Test Input)
+        """
+
+        dec_stp, _, _ = self.decoder(dec_input)
+        dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
+        dec_recon_loss = self.weighted_avg(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=pitches, logits=dec_recon_logits), self.stp_varlen_mask))
 
     def loss(self, output_dict):
 

@@ -7,9 +7,9 @@ import argparse
 parser = argparse.ArgumentParser(description='piano genie model args')
 
 parser.add_argument('--mode', type=str, default='train', help='mode: either train or test')
-parser.add_argument('--restore', type=bool, default=True, help='restore last training checkpoint')
-parser.add_argument('--debug', type=bool, default=True, help='used for debugging on single batch')
-parser.add_argument('--create-data', type=bool, default=False, help='create pickled train data if true')
+parser.add_argument('--restore', type=str, default='true', help='restore last training checkpoint')
+parser.add_argument('--debug', type=str, default='false', help='used for debugging on single batch')
+parser.add_argument('--create-data', type=str, default='false', help='create pickled train data if true')
 
 args = parser.parse_args()
 
@@ -36,17 +36,17 @@ def main():
     available_device = 'GPU:0' if tf.test.is_gpu_available() else 'CPU:0'
 
     # Training Data Pickling
-    if args.create_data: 
+    if args.create_data == 'true': 
         load_noteseqs()
 
     # Load Notesequences
-    if args.debug: 
+    if args.debug == 'true': 
         note_tensors = pickle.load(open('pickled_note_test_batch.p', 'rb'))
-    else:
+    if args.debug == 'false':
         note_tensors = pickle.load(open('pickled_tensors.p', 'rb'))
 
     # Restore Checkpoint
-    if args.restore:
+    if args.restore == 'true':
         checkpt.restore(manager.latest_checkpoint)
 
     with tf.device('/device:' + available_device):
