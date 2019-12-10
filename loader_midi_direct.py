@@ -95,7 +95,7 @@ def load_noteseqs(seq_len = 128,
         return seq
 
     # Find sharded filenames
-    filenames = tf.io.gfile.glob("midi_data/*.midi")
+    filenames = tf.io.gfile.glob("test_data/*.midi")
 
     note_sequences_ls = []
     for _ in range(repeat_sample):
@@ -128,7 +128,7 @@ def load_noteseqs(seq_len = 128,
     # Build return dict
     note_tensors = {"midi_pitches": note_pitches, "delta_times_int": note_delta_times_int}
 
-    file = open('pickled_tensors_train.p', 'wb')
+    file = open('pickled_tensors_test.p', 'wb')
     pickle.dump(note_tensors, file)
     file.close()
 

@@ -124,7 +124,6 @@ class PianoGenie(tf.keras.Model):
         self.decoder = Decoder()
 
         self.enc_pre_dense = Dense(1)
-        # self.embedding = Dense(64)
         self.dec_dense = Dense(88)
 
         # Optimizer
@@ -253,16 +252,6 @@ class PianoGenie(tf.keras.Model):
         
         return dec_recon_logits
 
-    def test(self, dec_input):
-
-        """
-            Used for Paper / Presentation (Test Input)
-        """
-
-        dec_stp, _, _ = self.decoder(dec_input)
-        dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
-        dec_recon_loss = self.weighted_avg(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=pitches, logits=dec_recon_logits), self.stp_varlen_mask))
-
     def loss(self, output_dict):
 
         loss = output_dict['dec_recons_loss']
@@ -289,4 +278,19 @@ class PianoGenie(tf.keras.Model):
             self.optimizer.apply_gradients(zip(grad, self.trainable_variables))
 
         return loss
+
+    def test(self, input_dict):
+        n, total = self.batch_size, input_dict['midi_pitches'].shape[0]
+
+        avg_loss = 0
+        for i in range(total//n):
+            start, end = i * n, (i+1) * n
+            inputs = {'midi_pitches': input_dict['midi_pitches'][start:end],
+                      'delta_times_int': input_dict['delta_times_int'][start:end]}
+
+            outputs = self.call(inputs)
+            loss, _ = self.loss(outputs)
+            avg_loss += loss
+        
+        return avg_loss / (total//n)
 
