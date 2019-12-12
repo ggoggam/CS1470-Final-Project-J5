@@ -15,10 +15,10 @@ def hello_name(button):
     rm = app.config['RUNMANAGER']
     buttonInt = int(button)
     note = rm.next(buttonInt)
-    noteString = str(note.numpy())
+    noteString = str(note)
     print(buttonInt, noteString)
     return noteString
 
 def run_app(rm):
     app.config['RUNMANAGER'] = rm
-    app.run()
+    app.run(host="10.38.48.112")

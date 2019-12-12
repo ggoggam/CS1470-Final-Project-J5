@@ -8,7 +8,7 @@ from run_manager import RunManager
 
 parser = argparse.ArgumentParser(description='piano genie model args')
 
-parser.add_argument('--mode', type=str, default='run', help='mode: train, test, or r
+parser.add_argument('--mode', type=str, default='run', help='mode: train, test, or run')
 parser.add_argument('--restore', type=str, default='true', help='restore last training checkpoint')
 parser.add_argument('--debug', type=str, default='false', help='used for debugging on single batch')
 parser.add_argument('--create-data', type=str, default='false', help='create pickled train data if true')

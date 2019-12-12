@@ -1,5 +1,6 @@
 import tensorflow as tf
 import time
+import numpy as np
 
 class RunManager:
     def __init__(self, model):
@@ -8,6 +9,7 @@ class RunManager:
         self.time = time.time()
         self.lastOutput = -1
         self.lastState = [[tf.zeros([1,128]), tf.zeros([1, 128])] for _ in range(2)]
+        self.keys = [n for n in range(88)]
     
     def getInputFeats(self, button):
         featsArr = []
@@ -39,7 +41,10 @@ class RunManager:
         input_feats = tf.reshape(input_feats, [1, 1, -1])
 
         logits, state = self.model.evaluate(input_feats, self.lastState)
-        note = tf.math.argmax(logits[0][0])
+        # note = tf.math.argmax(logits[0][0])
+        probs = tf.nn.softmax(logits).numpy()
+        
+        note = np.random.choice(self.keys, p=probs[0][0])
 
         self.lastOutput = note
         self.lastState = state
