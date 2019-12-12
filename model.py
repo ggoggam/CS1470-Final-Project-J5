@@ -68,17 +68,18 @@ class Decoder(tf.keras.layers.Layer):
         self.lstm = RNN(cells, return_sequences=True, return_state=True)
 
     @tf.function
-    def call(self, inputs, input_state=None):
+    def call(self, inputs, run_time=False, input_state=None):
 
         inputs = self.lift(inputs)
         init_state = [[tf.zeros([32,128]), tf.zeros([32, 128])] for _ in range(self.num_layers)]
 
-        if input_state:
+        if run_time:
             print("ASDFADSF")
             init_state = input_state
-
+        print(init_state)
         outputs, h, _ = self.lstm(inputs, initial_state=init_state)
-        final_state = h[1]
+        final_state = tf.concat(h, axis=-1)
+        
 
         return outputs, init_state, final_state
 
@@ -251,9 +252,9 @@ class PianoGenie(tf.keras.Model):
             Used for Actual Demo (Converting 8-button Input to Piano Keys)
         """
 
-        dec_stp, _, final_state = self.decoder(dec_input, last_state)
-        print(dec_stp)
-        dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
+        dec_stp, _, final_state = self.decoder(dec_input, run_time=True, input_state=last_state)
+        # print(dec_stp)
+        dec_recon_logits = self.dec_dense(dec_stp)
         
         return dec_recon_logits, final_state
 
