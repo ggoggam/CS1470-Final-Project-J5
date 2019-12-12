@@ -34,7 +34,6 @@ class RunManager:
     def next(self, button):
         input_feats = self.getInputFeats(button)
         input_feats = tf.reshape(input_feats, [1, 1, -1])
-        print(tf.shape(input_feats))
 
         logits, state = self.model.evaluate(input_feats, self.lastState)
         note = tf.math.argmax(logits[0][0])

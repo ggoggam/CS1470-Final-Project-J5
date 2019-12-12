@@ -28,7 +28,7 @@ class Encoder(tf.keras.layers.Layer):
         self.num_layers = 2
         self.rnn_units = 128
 
-        cells = StackedRNNCells([LSTMCell(self.rnn_units)] * self.num_layers)
+        cells = StackedRNNCells([LSTMCell(self.rnn_units) for _ in range(self.num_layers)])
 
         self.lift = Dense(self.rnn_units)
         self.lstm = Bidirectional(RNN(cells, return_sequences=True, return_state=True))
@@ -61,20 +61,21 @@ class Decoder(tf.keras.layers.Layer):
         self.num_layers = 2
         self.rnn_units = 128
 
-        cells = StackedRNNCells([LSTMCell(self.rnn_units)] * self.num_layers)
+        cells = StackedRNNCells([LSTMCell(self.rnn_units) for _ in range(self.num_layers)])
         self.state_size = cells.state_size
         
         self.lift = Dense(self.rnn_units)
-        self.lstm = RNN(cells, return_state=True)
+        self.lstm = RNN(cells, return_sequences=True, return_state=True)
 
     @tf.function
-    def call(self, inputs, lastState=None):
+    def call(self, inputs, input_state=None):
 
         inputs = self.lift(inputs)
         init_state = [[tf.zeros([32,128]), tf.zeros([32, 128])] for _ in range(self.num_layers)]
 
-        if lastState:
-            init_state = lastState
+        if input_state:
+            print("ASDFADSF")
+            init_state = input_state
 
         outputs, h, _ = self.lstm(inputs, initial_state=init_state)
         final_state = h[1]
@@ -232,7 +233,7 @@ class PianoGenie(tf.keras.Model):
 
         # Decode
         dec_stp, _, dec_final_state = self.decoder(dec_input)
-        dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
+        dec_recon_logits = self.dec_dense(dec_stp)
         dec_recon_loss = self.weighted_avg(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=pitches, logits=dec_recon_logits), self.stp_varlen_mask)
 
         output_dict['dec_final_state'] = dec_final_state
@@ -244,19 +245,22 @@ class PianoGenie(tf.keras.Model):
 
         return output_dict
 
-    def evaluate(self, dec_input, lastState):
+    def evaluate(self, dec_input, last_state):
 
         """
             Used for Actual Demo (Converting 8-button Input to Piano Keys)
         """
-        
-        dec_stp, _, final_state = self.decoder(dec_input, lastState)
-        dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
 
+        dec_stp, _, final_state = self.decoder(dec_input, last_state)
+        print(dec_stp)
+        dec_recon_logits = self.dec_dense(tf.expand_dims(dec_stp, -1))
+        
         return dec_recon_logits, final_state
 
     def loss(self, output_dict):
-
+        print('RECON: %.3f' % output_dict['dec_recons_loss'])
+        print('RANGE: %.3f' % output_dict['stp_emb_range_penalty'])
+        print('CONTR: %.3f' % output_dict['stp_emb_contour_penalty'])
         loss = output_dict['dec_recons_loss']
         loss = loss + output_dict['stp_emb_range_penalty']
         loss = loss + output_dict['stp_emb_contour_penalty']
@@ -285,15 +289,15 @@ class PianoGenie(tf.keras.Model):
     def test(self, input_dict):
         n, total = self.batch_size, input_dict['midi_pitches'].shape[0]
 
-        avg_loss = 0
+        avg_loss, avg_perp = 0, 0
         for i in range(total//n):
             start, end = i * n, (i+1) * n
             inputs = {'midi_pitches': input_dict['midi_pitches'][start:end],
                       'delta_times_int': input_dict['delta_times_int'][start:end]}
 
             outputs = self.call(inputs)
-            loss, _ = self.loss(outputs)
+            loss, perp = self.loss(outputs)
             avg_loss += loss
+            avg_perp += perp
         
-        return avg_loss / (total//n)
-
+        return avg_loss / (total//n), avg_perp / (total//n)

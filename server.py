@@ -10,8 +10,11 @@ def parse_request():
     return "hi"
 
 @app.route('/<button>')
-def hello_name(name):
-    return "Hello {}!".format(name)
+def hello_name(button):
+    rm = app.config['RUNMANAGER']
+    note = rm.next(3)
+    print(note)
+    return "Hello {}!".format(note)
 
 def run_app(rm):
     app.config['RUNMANAGER'] = rm
