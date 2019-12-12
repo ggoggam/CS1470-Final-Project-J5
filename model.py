@@ -74,12 +74,9 @@ class Decoder(tf.keras.layers.Layer):
         init_state = [[tf.zeros([32,128]), tf.zeros([32, 128])] for _ in range(self.num_layers)]
 
         if run_time:
-            print("ASDFADSF")
             init_state = input_state
-        print(init_state)
-        outputs, h, _ = self.lstm(inputs, initial_state=init_state)
-        final_state = tf.concat(h, axis=-1)
-        
+        outputs, h, c = self.lstm(inputs, initial_state=init_state)
+        final_state = [h, c]
 
         return outputs, init_state, final_state
 
@@ -253,7 +250,6 @@ class PianoGenie(tf.keras.Model):
         """
 
         dec_stp, _, final_state = self.decoder(dec_input, run_time=True, input_state=last_state)
-        # print(dec_stp)
         dec_recon_logits = self.dec_dense(dec_stp)
         
         return dec_recon_logits, final_state
