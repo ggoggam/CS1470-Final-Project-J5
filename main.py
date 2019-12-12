@@ -50,7 +50,7 @@ def main():
     # Restore Checkpoint
     if args.restore == 'true':
         checkpt.restore(manager.latest_checkpoint).expect_partial()
-
+        
     with tf.device('/device:' + available_device):
         if args.mode == 'train':
             cnt = 1
@@ -70,8 +70,8 @@ def main():
         if args.mode == 'test':
             checkpt.restore(manager.latest_checkpoint).expect_partial()
             note_tensors = pickle.load(open('pickled_tensors_test.p', 'rb'))
-            test_loss = model.test(note_tensors)
-            print('Test Loss : %.5f' % (test_loss))
+            test_loss, test_perp = model.test(note_tensors)
+            print('Test Loss : %.5f' % (test_loss, test_perp))
         
         if args.mode == 'run':
             checkpt.restore(manager.latest_checkpoint).expect_partial()

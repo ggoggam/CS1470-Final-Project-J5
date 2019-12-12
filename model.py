@@ -255,9 +255,9 @@ class PianoGenie(tf.keras.Model):
         return dec_recon_logits, final_state
 
     def loss(self, output_dict):
-        print('RECON: %.3f' % output_dict['dec_recons_loss'])
-        print('RANGE: %.3f' % output_dict['stp_emb_range_penalty'])
-        print('CONTR: %.3f' % output_dict['stp_emb_contour_penalty'])
+        # print('RECON: %.3f' % output_dict['dec_recons_loss'])
+        # print('RANGE: %.3f' % output_dict['stp_emb_range_penalty'])
+        # print('CONTR: %.3f' % output_dict['stp_emb_contour_penalty'])
         loss = output_dict['dec_recons_loss']
         loss = loss + output_dict['stp_emb_range_penalty']
         loss = loss + output_dict['stp_emb_contour_penalty']

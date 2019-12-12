@@ -4,7 +4,7 @@ import tensorflow as tf
 def midi2piano(pitches):
 
     """
-        Transforms MIDI pitches [21,108] to [0, 88) 
+        Transforms MIDI pitches [21,108] to [0, 87]
     """
 
     assertions = [tf.debugging.assert_greater_equal(pitches, 21),
@@ -16,7 +16,7 @@ def midi2piano(pitches):
 def piano2midi(pitches):
 
     """
-        Transforms MIDI pitches [21,108] to [0, 88)
+        Transforms MIDI pitches [0, 87] to [21, 108]
     """
 
     assertions = [tf.debugging.assert_greater_equal(pitches, 0),
