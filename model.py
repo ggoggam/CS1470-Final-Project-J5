@@ -91,6 +91,7 @@ class PianoGenie(tf.keras.Model):
             - Learns as Autoencoder Architecture 
                 (88-key Input ---Encoder---> 8-key Compressed ---Decoder---> 88-key Output)
             - Goal: Learn the best sounding representation given a compressed input
+        
         - Testing
             - Equivalent to Decoding
 
@@ -255,9 +256,7 @@ class PianoGenie(tf.keras.Model):
         return dec_recon_logits, final_state
 
     def loss(self, output_dict):
-        # print('RECON: %.3f' % output_dict['dec_recons_loss'])
-        # print('RANGE: %.3f' % output_dict['stp_emb_range_penalty'])
-        # print('CONTR: %.3f' % output_dict['stp_emb_contour_penalty'])
+
         loss = output_dict['dec_recons_loss']
         loss = loss + output_dict['stp_emb_range_penalty']
         loss = loss + output_dict['stp_emb_contour_penalty']

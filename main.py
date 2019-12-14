@@ -15,6 +15,8 @@ parser.add_argument('--create-data', type=str, default='false', help='create pic
 
 args = parser.parse_args()
 
+data_path = './data/'
+
 def shuffle(input_dict):
 
     num_samples = input_dict['midi_pitches'].shape[0]
@@ -43,9 +45,9 @@ def main():
 
     # Load Notesequences
     if args.debug == 'true': 
-        note_tensors = pickle.load(open('pickled_note_test_batch.p', 'rb'))
+        note_tensors = pickle.load(open(data_path+'pickled_note_test_batch.p', 'rb'))
     if args.debug == 'false':
-        note_tensors = pickle.load(open('pickled_tensors.p', 'rb'))
+        note_tensors = pickle.load(open(data_path+'pickled_tensors.p', 'rb'))
 
     # Restore Checkpoint
     if args.restore == 'true':
@@ -69,7 +71,7 @@ def main():
         
         if args.mode == 'test':
             checkpt.restore(manager.latest_checkpoint).expect_partial()
-            note_tensors = pickle.load(open('pickled_tensors_test.p', 'rb'))
+            note_tensors = pickle.load(open(data_path+'pickled_tensors_test.p', 'rb'))
             test_loss, test_perp = model.test(note_tensors)
             print('Test Loss : %.5f' % (test_loss, test_perp))
         
