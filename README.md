@@ -1,5 +1,5 @@
 # Piano Genie - TF Keras Implementation
-We implement Piano Genie model using TensorFlow 2.x Keras methods. For more information and Github fork, follow these links:
+We implement Piano Genie model using Tensorflow 2.x Keras methods. For more information and Github fork, follow these links:
 * Piano Genie [Paper](https://arxiv.org/pdf/1810.05246.pdf)
 * Piano Genie Tensorflow Magenta [Blog Post](https://magenta.tensorflow.org/pianogenie)
 * Piano Genie [Github](https://github.com/tensorflow/magenta/tree/master/magenta/models/piano_genie)
@@ -9,7 +9,7 @@ The original model was implemented with Tensorflow 1.x alongside custom configur
 The model takes user input via iOS app. The code is provided in the repository as well.
 
 # How to setup your environment
-We use utilities from magenta to process the dataset. Magenta has some compatilbility issues with the most recent versions of TensorFlow, so we recommend setting up the development environment in the following way from your chosen directory:
+We use utilities from magenta to process the dataset. Magenta has some compatilbility issues with the most recent versions of Tensorflow, so we recommend setting up the development environment in the following way from your chosen directory:
 ```
 # Windows
 py -m venv <path-to-virtual-environment>
@@ -20,7 +20,7 @@ $ python3 -m venv <path-to-virtual-envrionment>
 $ source <path-to-virtual-environment>/bin/activate
 ```
 
-Once magenta is installed, upgrade tensorflow.
+Once magenta is installed, it will have automatically downgraded Tensorflow to 1.x. You will need to manually upgrade Tensorflow.
 ```
 # Windows / Linux
 (your-venv) pip install magenta
